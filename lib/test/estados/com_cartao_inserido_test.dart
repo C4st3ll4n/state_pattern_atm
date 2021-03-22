@@ -16,10 +16,18 @@ void main() {
         caixaEletronico.estado = comCartao;
       });
 
-  PostExpectation _mockInserirCodigo() => when(caixaEletronico.inserirCodigoSeguranca("321"));
-  _mockInserirCodigoCall() => _mockInserirCodigo().thenAnswer((_) {
-    ca
-  });
+  PostExpectation _mockInserirCodigo() =>
+      when(caixaEletronico.inserirCodigoSeguranca(any));
+  void _mockInserirCodigoCall() => _mockInserirCodigo().thenAnswer((_) {
+        caixaEletronico.inseriuCodigoSegurancaCorreto = true;
+        caixaEletronico.estado = caixaEletronico.codigoSegurancaCorreto;
+      });
+
+  void _mockInserirCodigoCallFail() =>
+      when(caixaEletronico.inserirCodigoSeguranca(any))
+          .thenAnswer((_) async {
+            caixaEletronico.inseriuCodigoSegurancaCorreto=false;
+          });
 
   setUp(() {
     caixaEletronico = CaixaEletronicoSpy();
@@ -28,14 +36,15 @@ void main() {
     caixaEletronico.initialize(
         comCartaoEstado: comCartao,
         semCartaoEstado: CaixaEstadoSpy.mockSemCartao(),
-        semGranaEstado:CaixaEstadoSpy.mockSemGrana(),
+        semGranaEstado: CaixaEstadoSpy.mockSemGrana(),
         codigoSegurancaEstado: CaixaEstadoSpy.mockComCodigo());
 
     comCartao.initialize(caixaEletronico);
 
-    _mockInserirCartaoCall();
-
     caixaEletronico.inserirCartao();
+
+    _mockInserirCartaoCall();
+    _mockInserirCodigoCall();
   });
 
   test("Não pode inserir cartão", () async {
@@ -55,7 +64,12 @@ void main() {
   });
 
   test("Deve falhar ao inseriro código de segurança incorreto", () async {
-    comCartao.inserirCodigoSeguranca(faker.randomGenerator.string(4));
+    _mockInserirCodigoCallFail();
+    String codigo = faker.randomGenerator.string(4);
+    comCartao.inserirCodigoSeguranca(codigo);
+
+    verify(caixaEletronico.inserirCodigoSeguranca(codigo)).called(1);
+
     expect(caixaEletronico.estado, caixaEletronico.comCartao);
     expect(caixaEletronico.inseriuCodigoSegurancaCorreto, false);
   });
